@@ -180,8 +180,9 @@ func buildXdsTCPListener(
 		},
 	}
 
-	if ipFamily != nil && *ipFamily == egv1a1.DualStack {
+	if ipFamily != nil && (*ipFamily == egv1a1.DualStack || *ipFamily == egv1a1.IPv6) {
 		socketAddress := listener.Address.GetSocketAddress()
+		// Explicitly enable IPv4 compatibility to pass readiness checks in DualStack clusters
 		socketAddress.Ipv4Compat = true
 	}
 
