@@ -14,8 +14,11 @@ import (
 	hcmv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	typev3 "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"k8s.io/utils/ptr"
 
+	egv1a1 "github.com/envoyproxy/gateway/api/v1alpha1"
 	"github.com/envoyproxy/gateway/internal/ir"
 )
 
@@ -98,6 +101,46 @@ func Test_buildTCPProxyHashPolicy(t *testing.T) {
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("buildTCPProxyHashPolicy() got = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func Test_buildXdxTCPListener_ipv4Compat(t *testing.T) {
+	cases := []struct {
+		name               string
+		ipFamily           *ir.IPFamily
+		expectedIPv4Compat bool
+	}{
+		{
+			"default",
+			nil,
+			false,
+		},
+		{
+			"dual stack",
+			ptr.To(egv1a1.DualStack),
+			true,
+		},
+		{
+			"ipv6 single stack",
+			ptr.To(egv1a1.IPv6),
+			true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			l, err := buildXdsTCPListener(
+				"testing",
+				"::",
+				443,
+				tc.ipFamily,
+				nil,
+				nil,
+				nil,
+			)
+			require.NoError(t, err, "build xds tcp listener")
+			assert.Equal(t, tc.expectedIPv4Compat, l.Address.GetSocketAddress().Ipv4Compat, "ipv4 compat")
 		})
 	}
 }
